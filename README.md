@@ -28,7 +28,7 @@ If you want to try it yourself, you can run the following code in PowerShell to 
 ```powershell
 # powershell
 
-git clone https://...
+git clone https://github.com/kumarstack55/PSExcelTreeTableStyler.git
 Set-Location .\PSExcelTreeTableStyler\
 
 # Launch Excel and create a new workbook.
