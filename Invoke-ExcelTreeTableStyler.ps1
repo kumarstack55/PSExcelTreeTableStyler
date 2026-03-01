@@ -475,63 +475,145 @@ function Invoke-ExcelTreeTableStyler {
     }
 }
 
-function Test-CombiningTwoRectanglesResultsInARectangle {
-  param(
-    [Parameter(Mandatory=$true)]
-    [object]$area1,
-
-    [Parameter(Mandatory=$true)]
-    [object]$area2
-  )
-  # Check if the top-left rows of the two areas are the same.
-  $cond1 = $area1.Row -eq $area2.Row
-
-  # Check if the number of rows in the two areas is the same.
-  $cond2 = $area1.Rows.Count -eq $area2.Rows.Count
-
-  # Check if the right edge of the first area connects to the left edge of the second area.
-  $cond3 = $area1.Column + $area1.Columns.Count -eq $area2.Column
-
-  $cond1 -and $cond2 -and $cond3
-}
-
-function Invoke-AttachExcelOrCreateExcel {
-    param()
-
-    Write-Host "Trying to get an active Excel application..."
-    try {
-        $excel = [Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Application')
-        Write-Host "Active Excel application found."
-        return $excel
-    } catch {
-        Write-Host "No active Excel application found. Trying to create a new one..."
-    }
-
-    Write-Host "Creating a new Excel application..."
-    $excel = New-Object -ComObject Excel.Application
-    $excel.Visible = $true
-    return $excel
-}
-
 if ($MyInvocation.InvocationName -ne '.') {
     # not dot-sourced, execute main process
 
-    # Check if there are more or equal to two Excel processes running.
-    # If there are, prompt the user to stop them and exit the script.
-    $excelProcesses = @(Get-Process -Name "Excel" -ErrorAction SilentlyContinue)
-    if ($excelProcesses.Count -ge 2) {
-        Write-Host "Error: Excel processes found."
-        Write-Host ""
-        Write-Host "Multiple processes are running; therefore, the operation will be terminated."
-        Write-Host "Please run it again with only one process."
-        Write-Host ""
-        Write-Host "If you wish to force-close all processes, please execute the following."
-        Write-Host "WARNING: DATA WILL NOT BE SAVED." -ForegroundColor Red
-        Write-Host ""
-        Write-Host "  PS > Get-Process -Name `"Excel`" -ErrorAction SilentlyContinue | Stop-Process -Force"
-        Write-Host ""
-        exit 1
+    function Invoke-TestExcelProcessesIsLessThanTwo {
+        # Check if there are more or equal to two Excel processes running.
+        # If there are, prompt the user to stop them and exit the script.
+        $excelProcesses = @(Get-Process -Name "Excel" -ErrorAction SilentlyContinue)
+        if ($excelProcesses.Count -ge 2) {
+            Write-Host "Error: Excel processes found."
+            Write-Host ""
+            Write-Host "Multiple processes are running; therefore, the operation will be terminated."
+            Write-Host "Please run it again with only one process."
+            Write-Host ""
+            Write-Host "If you wish to force-close all processes, please execute the following."
+            Write-Host "WARNING: DATA WILL NOT BE SAVED." -ForegroundColor Red
+            Write-Host ""
+            Write-Host "  PS > Get-Process -Name `"Excel`" -ErrorAction SilentlyContinue | Stop-Process -Force"
+            Write-Host ""
+            exit 1
+        }
     }
+
+    function Invoke-AttachExcelOrCreateExcel {
+        param()
+
+        Write-Host "Trying to get an active Excel application..."
+        try {
+            $excel = [Runtime.InteropServices.Marshal]::GetActiveObject('Excel.Application')
+            Write-Host "Active Excel application found."
+            return $excel
+        } catch {
+            Write-Host "No active Excel application found. Trying to create a new one..."
+        }
+
+        Write-Host "Creating a new Excel application..."
+        $excel = New-Object -ComObject Excel.Application
+        $excel.Visible = $true
+        return $excel
+    }
+
+    function Test-CombiningTwoRectanglesResultsInARectangle {
+    param(
+        [Parameter(Mandatory=$true)]
+        [object]$Area1,
+
+        [Parameter(Mandatory=$true)]
+        [object]$Area2
+    )
+    # Check if the top-left rows of the two areas are the same.
+    $cond1 = $Area1.Row -eq $Area2.Row
+
+    # Check if the number of rows in the two areas is the same.
+    $cond2 = $Area1.Rows.Count -eq $Area2.Rows.Count
+
+    # Check if the right edge of the first area connects to the left edge of the second area.
+    $cond3 = $Area1.Column + $Area1.Columns.Count -eq $Area2.Column
+
+    $cond1 -and $cond2 -and $cond3
+    }
+
+    function Invoke-CreateTableFromExcelRange {
+        param(
+            [Parameter(Mandatory=$true)]
+            [object]$Range,
+
+            [Parameter(Mandatory=$true)]
+            [ref]$TableRef
+        )
+
+        # Declare a 2D array to hold the boolean values of the cells in the range $Range.
+        $table = New-Object 'bool[,]' $Range.Rows.Count, $Range.Columns.Count
+
+        # Fill the $table with the boolean values of the cells in the range $Range.
+        $cells = $Range.Cells
+        for ($rowIndex = 0; $rowIndex -lt $Range.Rows.Count; $rowIndex++) {
+            for ($colIndex = 0; $colIndex -lt $Range.Columns.Count; $colIndex++) {
+                $cell = $cells.Item($rowIndex + 1, $colIndex + 1)
+                $value = $cell.Value2
+                $table[$rowIndex, $colIndex] = [bool]$value
+            }
+        }
+
+        $TableRef.Value = $table
+    }
+
+    function Invoke-ConfirmUserInput {
+        param(
+            [Parameter(Mandatory=$true)]
+            [System.Collections.Generic.List[Object]]$TreeList
+        )
+
+        # Confirm user input before styling.
+        Write-Host ""
+        Write-Host "The following trees will be styled:" -ForegroundColor Green
+        foreach ($Tree in $TreeList) {
+            Invoke-DumpTree -Tree $Tree
+        }
+        Write-Host ""
+        $confirmation = Read-Host "Do you want to proceed? (yes/no)"
+        if ($confirmation -cne "yes") {
+            Write-Host "Operation cancelled by the user."
+            exit 0
+        }
+    }
+
+    function Get-RangeFromAreas {
+        param(
+            [Parameter(Mandatory=$true)]
+            [object]$Areas,
+
+            [Parameter(Mandatory=$true)]
+            [ref]$RangeRef
+        )
+
+        if (($areas.Count -eq 1) -and ($area1.Rows.Count -eq 1) -and ($area1.Columns.Count -eq 1)) {
+            Write-Host "The selected area is only one cell. Please select a range and re-run the script."
+            exit 1
+        }
+
+        if ($areas.Count -eq 2) {
+            $area2 = $areas[2]
+            Write-Host "Area 2: $($area2.Address($false, $false))"
+            if (-not (Test-CombiningTwoRectanglesResultsInARectangle $area1 $area2)) {
+                Write-Host "The two areas cannot be combined into a rectangle."
+                exit 1
+            }
+
+            # Get the range that combines the two areas.
+            $c1 = $worksheet.Cells($area1.Row, $area1.Column)
+            $c2 = $worksheet.Cells($area2.Row + $area2.Rows.Count - 1, $area2.Column + $area2.Columns.Count - 1)
+            $range = $worksheet.Range($c1, $c2)
+        } else {
+            Write-Host "Area 2: (not selected)"
+            $range = $area1
+        }
+        $RangeRef.Value = $range
+    }
+
+    Invoke-TestExcelProcessesIsLessThanTwo
 
     $excel = Invoke-AttachExcelOrCreateExcel
 
@@ -569,40 +651,17 @@ if ($MyInvocation.InvocationName -ne '.') {
     # Get the number of columns in the header area.
     $headerColumnsCount = $area1.Columns.Count
 
-    if ($areas.Count -eq 2) {
-        $area2 = $areas[2]
-        Write-Host "Area 2: $($area2.Address($false, $false))"
-        if (-not (Test-CombiningTwoRectanglesResultsInARectangle $area1 $area2)) {
-            Write-Host "The two areas cannot be combined into a rectangle."
-            exit 1
-        }
+    # Get the row and column offsets from the top-left of the table to the top-left of the Excel range.
+    $RowFromTableToExcelOffset = $area1.Row
+    $ColumnFromTableToExcelOffset = $area1.Column
 
-        # Get the range that combines the two areas.
-        $c1 = $worksheet.Cells($area1.Row, $area1.Column)
-        $c2 = $worksheet.Cells($area2.Row + $area2.Rows.Count - 1, $area2.Column + $area2.Columns.Count - 1)
-        $r1 = $worksheet.Range($c1, $c2)
-    } else {
-        Write-Host "Area 2: (not selected)"
-        $r1 = $area1
-    }
+    $RangeRef = [ref]$null
+    Get-RangeFromAreas -Areas $areas -RangeRef $RangeRef
+    $r1 = $RangeRef.Value
 
-    if (($areas.Count -eq 1) -and ($area1.Rows.Count -eq 1) -and ($area1.Columns.Count -eq 1)) {
-        Write-Host "The selected area is only one cell. Please select a range and re-run the script."
-        exit 1
-    }
-
-    # Declare a 2D array to hold the boolean values of the cells in the range $r1.
-    $table = New-Object 'bool[,]' $r1.Rows.Count, $r1.Columns.Count
-
-    # Fill the $table with the boolean values of the cells in the range $r1.
-    $cells = $r1.Cells
-    for ($rowIndex = 0; $rowIndex -lt $r1.Rows.Count; $rowIndex++) {
-        for ($colIndex = 0; $colIndex -lt $r1.Columns.Count; $colIndex++) {
-            $cell = $cells.Item($rowIndex + 1, $colIndex + 1)
-            $value = $cell.Value2
-            $table[$rowIndex, $colIndex] = [bool]$value
-        }
-    }
+    $TableRef = [ref]$null
+    Invoke-CreateTableFromExcelRange -Range $r1 -TableRef $TableRef
+    $table = $TableRef.Value
 
     # Get the list of rectangles for the root trees from the 2D boolean array.
     $rootTreeRectangleList = Get-TreeRectangleList $table
@@ -614,15 +673,14 @@ if ($MyInvocation.InvocationName -ne '.') {
         $TreeList.Add($Tree)
     }
 
-    # Get the row and column offsets from the top-left of the table to the top-left of the Excel range.
-    $RowFromTableToExcelOffset = $area1.Row
-    $ColumnFromTableToExcelOffset = $area1.Column
-
     # The section depth max is set to 0, which means that only the root trees will be treated as sections.
     $sectionDepthMax = 1
 
     # Set the styler strategy.
     $stylerStrategy = [FillSectionAndDrawBordersStrategy]::new($excel, $workbook, $worksheet, $headerColumnsCount, $sectionDepthMax)
+
+    # Confirm user input before styling.
+    Invoke-ConfirmUserInput -TreeList $TreeList
 
     # For each tree in the tree list, invoke the Excel tree table styler.
     foreach ($Tree in $TreeList) {
