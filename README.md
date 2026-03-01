@@ -31,7 +31,7 @@ It allows you to easily create a tree table in Excel by selecting multiple range
 
 ![after](images/after.png)
 
-If you want to try it yourself, you can run the following code in PowerShell to launch Excel and fill in some data. 
+If you want to try it yourself, you can run the following code in PowerShell to launch Excel and fill in some data.
 
 ```powershell
 # powershell
