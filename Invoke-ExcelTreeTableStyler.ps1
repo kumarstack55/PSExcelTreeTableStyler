@@ -365,15 +365,22 @@ class FillSectionAndDrawBordersStrategy : StylerStrategy {
         $cellBottom = $Rectangle.Row + $Rectangle.RowsCount - 1
         $cellRight = $Rectangle.Column + $Rectangle.ColumnsCount - 1
 
-        # Get the left top cell and the right bottom cell of the rectangle.
-        $cellTopLeft = $this.Worksheet.Cells($cellTop, $cellLeft)
-        $cellBottomRight = $this.Worksheet.Cells($cellBottom, $cellRight)
-
         # Get the range.
-        $range1 = $this.Worksheet.Range($cellTopLeft, $cellBottomRight)
+        $range1 = $this.CreateRange($cellTop, $cellLeft, $cellBottom, $cellRight)
 
         # Draw the border of the rectangle.
         $this.ClearFillAndBorders($range1)
+    }
+    [object] CreateRange([int]$Top, [int]$Left, [int]$Bottom, [int]$Right) {
+        if ($Top -gt $Bottom) {
+            throw [ExcelTreeTableStylerException]::new("Invalid rectangle: Top ($Top) is greater than Bottom ($Bottom).")
+        }
+        if ($Left -gt $Right) {
+            throw [ExcelTreeTableStylerException]::new("Invalid rectangle: Left ($Left) is greater than Right ($Right).")
+        }
+        $cellTopLeft = $this.Worksheet.Cells($Top, $Left)
+        $cellBottomRight = $this.Worksheet.Cells($Bottom, $Right)
+        return $this.Worksheet.Range($cellTopLeft, $cellBottomRight)
     }
     Style([Tree]$Tree, [Rectangle]$Rectangle) {
         Write-Debug "Style(): Tree=$($Tree.ToString()), Rectangle=$($Rectangle.ToString())"
@@ -386,12 +393,8 @@ class FillSectionAndDrawBordersStrategy : StylerStrategy {
         $cellBottom = $Rectangle.Row + $Rectangle.RowsCount - 1
         $cellRight = $Rectangle.Column + $Rectangle.ColumnsCount - 1
 
-        # Get the left top cell and the right bottom cell of the rectangle.
-        $cellTopLeft = $this.Worksheet.Cells($cellTop, $cellLeft)
-        $cellBottomRight = $this.Worksheet.Cells($cellBottom, $cellRight)
-
         # Get the range.
-        $range1 = $this.Worksheet.Range($cellTopLeft, $cellBottomRight)
+        $range1 = $this.CreateRange($cellTop, $cellLeft, $cellBottom, $cellRight)
 
         # Draw the border of the rectangle.
         $this.DrawRectangleBorder($range1)
