@@ -613,80 +613,92 @@ if ($MyInvocation.InvocationName -ne '.') {
         $RangeRef.Value = $range
     }
 
-    Invoke-TestExcelProcessesIsLessThanTwo
+    function Invoke-ExcelTreeTableStylerMain {
+        param()
 
-    $excel = Invoke-AttachExcelOrCreateExcel
+        Invoke-TestExcelProcessesIsLessThanTwo
 
-    $workbook  = $excel.ActiveWorkbook
-    if ($null -eq $workbook) {
-        Write-Host "No active workbook found. Open '*.xlsx' file in Excel and re-run the script."
-        exit 1
+        $excel = Invoke-AttachExcelOrCreateExcel
+
+        $workbook  = $excel.ActiveWorkbook
+        if ($null -eq $workbook) {
+            Write-Host "No active workbook found. Open '*.xlsx' file in Excel and re-run the script."
+            exit 1
+        }
+
+        $workbookPath = $workbook.Name
+        Write-Host "Active workbook found: $($workbookPath)"
+
+        $worksheet = $excel.ActiveSheet
+        if ($null -eq $worksheet) {
+            Write-Host "No active worksheet found."
+            exit 1
+        }
+        $worksheetName = $worksheet.Name
+        Write-Host "Active worksheet found: $($worksheetName)"
+
+        $selection = $excel.Selection
+        $areas = $selection.Areas
+        if ($areas.Count -eq 0) {
+            Write-Host "No selection found. Please select a range and re-run the script."
+            exit 1
+        } elseif ($areas.Count -gt 2) {
+            Write-Host "Too many areas selected. : $($areas.Count)"
+            Write-Host "Please select one or two ranges and re-run the script."
+            exit 1
+        }
+
+        $area1 = $areas[1]
+        Write-Host "Area 1: $($area1.Address($false, $false))"
+
+        # Get the number of columns in the header area.
+        $headerColumnsCount = $area1.Columns.Count
+
+        # Get the row and column offsets from the top-left of the table to the top-left of the Excel range.
+        $RowFromTableToExcelOffset = $area1.Row
+        $ColumnFromTableToExcelOffset = $area1.Column
+
+        $RangeRef = [ref]$null
+        Get-RangeFromAreas -Areas $areas -RangeRef $RangeRef
+        $r1 = $RangeRef.Value
+
+        $TableRef = [ref]$null
+        Invoke-CreateTableFromExcelRange -Range $r1 -TableRef $TableRef
+        $table = $TableRef.Value
+
+        # Get the list of rectangles for the root trees from the 2D boolean array.
+        $rootTreeRectangleList = Get-TreeRectangleList $table
+        $treeFactory = [TreeFactory]::new($table)
+        $TreeList = [System.Collections.Generic.List[Object]]::new()
+        for ($treeIndex = 0; $treeIndex -lt $rootTreeRectangleList.Count; $treeIndex++) {
+            $rootTreeRectangle = $rootTreeRectangleList[$treeIndex]
+            $Tree = $treeFactory.CreateTree($treeIndex, $null, $rootTreeRectangle, 0, $headerColumnsCount)
+            $TreeList.Add($Tree)
+        }
+
+        # The section depth max is set to 0, which means that only the root trees will be treated as sections.
+        $sectionDepthMax = 1
+
+        # Set the styler strategy.
+        $stylerStrategy = [FillSectionAndDrawBordersStrategy]::new($excel, $workbook, $worksheet, $headerColumnsCount, $sectionDepthMax)
+
+        # Confirm user input before styling.
+        Invoke-ConfirmUserInput -TreeList $TreeList
+
+        # For each tree in the tree list, invoke the Excel tree table styler.
+        foreach ($Tree in $TreeList) {
+            Invoke-ExcelTreeTableStyler `
+                -RowFromTableToExcelOffset $RowFromTableToExcelOffset `
+                -ColumnFromTableToExcelOffset $ColumnFromTableToExcelOffset `
+                -Tree $Tree -StylerStrategy $stylerStrategy
+        }
     }
 
-    $workbookPath = $workbook.Name
-    Write-Host "Active workbook found: $($workbookPath)"
-
-    $worksheet = $excel.ActiveSheet
-    if ($null -eq $worksheet) {
-        Write-Host "No active worksheet found."
-        exit 1
-    }
-    $worksheetName = $worksheet.Name
-    Write-Host "Active worksheet found: $($worksheetName)"
-
-    $selection = $excel.Selection
-    $areas = $selection.Areas
-    if ($areas.Count -eq 0) {
-        Write-Host "No selection found. Please select a range and re-run the script."
-        exit 1
-    } elseif ($areas.Count -gt 2) {
-        Write-Host "Too many areas selected. : $($areas.Count)"
-        Write-Host "Please select one or two ranges and re-run the script."
-        exit 1
-    }
-
-    $area1 = $areas[1]
-    Write-Host "Area 1: $($area1.Address($false, $false))"
-
-    # Get the number of columns in the header area.
-    $headerColumnsCount = $area1.Columns.Count
-
-    # Get the row and column offsets from the top-left of the table to the top-left of the Excel range.
-    $RowFromTableToExcelOffset = $area1.Row
-    $ColumnFromTableToExcelOffset = $area1.Column
-
-    $RangeRef = [ref]$null
-    Get-RangeFromAreas -Areas $areas -RangeRef $RangeRef
-    $r1 = $RangeRef.Value
-
-    $TableRef = [ref]$null
-    Invoke-CreateTableFromExcelRange -Range $r1 -TableRef $TableRef
-    $table = $TableRef.Value
-
-    # Get the list of rectangles for the root trees from the 2D boolean array.
-    $rootTreeRectangleList = Get-TreeRectangleList $table
-    $treeFactory = [TreeFactory]::new($table)
-    $TreeList = [System.Collections.Generic.List[Object]]::new()
-    for ($treeIndex = 0; $treeIndex -lt $rootTreeRectangleList.Count; $treeIndex++) {
-        $rootTreeRectangle = $rootTreeRectangleList[$treeIndex]
-        $Tree = $treeFactory.CreateTree($treeIndex, $null, $rootTreeRectangle, 0, $headerColumnsCount)
-        $TreeList.Add($Tree)
-    }
-
-    # The section depth max is set to 0, which means that only the root trees will be treated as sections.
-    $sectionDepthMax = 1
-
-    # Set the styler strategy.
-    $stylerStrategy = [FillSectionAndDrawBordersStrategy]::new($excel, $workbook, $worksheet, $headerColumnsCount, $sectionDepthMax)
-
-    # Confirm user input before styling.
-    Invoke-ConfirmUserInput -TreeList $TreeList
-
-    # For each tree in the tree list, invoke the Excel tree table styler.
-    foreach ($Tree in $TreeList) {
-        Invoke-ExcelTreeTableStyler `
-            -RowFromTableToExcelOffset $RowFromTableToExcelOffset `
-            -ColumnFromTableToExcelOffset $ColumnFromTableToExcelOffset `
-            -Tree $Tree -StylerStrategy $stylerStrategy
+    try {
+        Invoke-ExcelTreeTableStylerMain
+    } catch {
+        Write-Host "An error occurred: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Stack Trace:" -ForegroundColor Red
+        Write-Host $_.Exception.StackTrace -ForegroundColor Red
     }
 }
