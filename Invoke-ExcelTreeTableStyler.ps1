@@ -237,6 +237,10 @@ class PrintStrategy : StylerStrategy {
     }
 }
 
+class ExcelTreeTableStylerException : System.Exception {
+    ExcelTreeTableStylerException([string]$Message) : base($Message) {}
+}
+
 class FillSectionAndDrawBordersStrategy : StylerStrategy {
     $ExcelApplication
     $Workbook
