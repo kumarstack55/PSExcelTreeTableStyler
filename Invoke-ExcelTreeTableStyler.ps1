@@ -223,16 +223,15 @@ class TreeFactory {
 }
 
 class StylerStrategy {
-    StylerStrategy() {
-    }
+    StylerStrategy() {}
+    BeforeStyle() {}
     Style([Tree]$Tree, [Rectangle]$Rectangle) {
         throw "NotImplementedException"
     }
 }
 
 class PrintStrategy : StylerStrategy {
-    PrintStrategy() : base() {
-    }
+    PrintStrategy() : base() {}
     Style([Tree]$Tree, [Rectangle]$Rectangle) {
         Write-Host "Style(): Tree=$($Tree.ToString()), Rectangle=$($Rectangle.ToString())"
     }
@@ -329,12 +328,48 @@ class FillSectionAndDrawBordersStrategy : StylerStrategy {
 
         $Range.Interior.Pattern = $xlPatternNone
     }
+    ClearFillAndBorders($Range) {
+        $this.ClearFillRectangle($Range)
+
+        # Constants for Excel's Borders.Item() method
+        $xlEdgeLeft = 7
+        $xlEdgeTop = 8
+        $xlEdgeBottom = 9
+        $xlEdgeRight = 10
+        $xlInsideVertical = 11
+        $xlInsideHorizontal = 12
+        $xlLineStyleNone = -4142
+        $edgeIndices = @($xlEdgeLeft, $xlEdgeTop, $xlEdgeBottom, $xlEdgeRight, $xlInsideVertical, $xlInsideHorizontal)
+
+        foreach ($edgeIndex in $edgeIndices) {
+            $Range.Borders.Item($edgeIndex).LineStyle = $xlLineStyleNone
+        }
+    }
     [Tree] GetRootTree([Tree]$Tree) {
         $currentTree = $Tree
         while ($null -ne $currentTree.ParentTree) {
             $currentTree = $currentTree.ParentTree
         }
         return $currentTree
+    }
+    BeforeStyle([Tree]$Tree, [Rectangle]$Rectangle) {
+        Write-Debug "BeforeStyle(): Tree=$($Tree.ToString()), Rectangle=$($Rectangle.ToString())"
+
+        # Calculate the rectangle for the header columns.
+        $cellTop = $Rectangle.Row
+        $cellLeft = $Rectangle.Column
+        $cellBottom = $Rectangle.Row + $Rectangle.RowsCount - 1
+        $cellRight = $Rectangle.Column + $Rectangle.ColumnsCount - 1
+
+        # Get the left top cell and the right bottom cell of the rectangle.
+        $cellTopLeft = $this.Worksheet.Cells($cellTop, $cellLeft)
+        $cellBottomRight = $this.Worksheet.Cells($cellBottom, $cellRight)
+
+        # Get the range.
+        $range1 = $this.Worksheet.Range($cellTopLeft, $cellBottomRight)
+
+        # Draw the border of the rectangle.
+        $this.ClearFillAndBorders($range1)
     }
     Style([Tree]$Tree, [Rectangle]$Rectangle) {
         Write-Debug "Style(): Tree=$($Tree.ToString()), Rectangle=$($Rectangle.ToString())"
@@ -363,7 +398,7 @@ class FillSectionAndDrawBordersStrategy : StylerStrategy {
             # Fill the rectangle with the section header color.
             $color = $this.HexToRGB($this.SectionHeaderColor)
             $this.FillRectangle($range1, $color)
-        }　else {
+        } else {
             # If not a section, treat it as a normal tree.
 
             # Fill the rectangle with the header color.
@@ -407,6 +442,8 @@ function Invoke-ExcelTreeTableStyler {
     $jobQueue = [System.Collections.Generic.Queue[Object]]::new()
     $jobQueue.Enqueue($Tree)
 
+    $isFirstJob = $true
+
     while ($jobQueue.Count -gt 0) {
         $currentTree = $jobQueue.Dequeue()
         Write-Host "Processing tree: $($currentTree.ToString())"
@@ -417,6 +454,11 @@ function Invoke-ExcelTreeTableStyler {
         [Rectangle]$rectangle = [Rectangle]::new(
             $excelRow, $excelColumn,
             $currentTree.TreeRectangle.RowsCount, $currentTree.TreeRectangle.ColumnsCount)
+
+        if ($isFirstJob) {
+            $isFirstJob = $false
+            $StylerStrategy.BeforeStyle($currentTree, $rectangle)
+        }
 
         $StylerStrategy.Style($currentTree, $rectangle)
 
