@@ -16,6 +16,8 @@ It allows you to easily create a tree table in Excel by selecting multiple range
 ```powershell
 # powershell
 
+git clone https://github.com/kumarstack55/PSExcelTreeTableStyler.git
+Set-Location .\PSExcelTreeTableStyler\
 .\Invoke-ExcelTreeTableStyler.ps1
 ```
 
