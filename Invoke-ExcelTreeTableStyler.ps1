@@ -565,7 +565,7 @@ if ($MyInvocation.InvocationName -ne '.') {
     $ColumnFromTableToExcelOffset = $area1.Column
 
     # The section depth max is set to 0, which means that only the root trees will be treated as sections.
-    $sectionDepthMax = 0
+    $sectionDepthMax = 1
 
     # Set the styler strategy.
     $stylerStrategy = [FillSectionAndDrawBordersStrategy]::new($excel, $workbook, $worksheet, $headerColumnsCount, $sectionDepthMax)
