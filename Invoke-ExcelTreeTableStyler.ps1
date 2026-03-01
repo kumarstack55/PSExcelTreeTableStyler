@@ -418,7 +418,6 @@ class FillSectionAndDrawBordersStrategy : StylerStrategy {
             $cellBodyLeft = $cellLeft + $headerColumunsWidthInRectanble
             $hasBodyArea = $cellBodyLeft -le $cellRight
             if ($hasBodyArea) {
-
                 $range2 = $this.CreateRange($cellTop, $cellBodyLeft, $cellBottom, $cellRight)
                 $range2.Select()
 
