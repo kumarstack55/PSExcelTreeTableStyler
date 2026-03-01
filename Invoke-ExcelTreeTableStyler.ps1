@@ -384,7 +384,6 @@ class FillSectionAndDrawBordersStrategy : StylerStrategy {
     }
     Style([Tree]$Tree, [Rectangle]$Rectangle) {
         Write-Debug "Style(): Tree=$($Tree.ToString()), Rectangle=$($Rectangle.ToString())"
-
         $headerColumunsWidthInRectanble = [Math]::Max(0, $this.HeaderColumnsCount - $Tree.TreeRectangle.Column)
 
         # Calculate the rectangle for the header columns.
