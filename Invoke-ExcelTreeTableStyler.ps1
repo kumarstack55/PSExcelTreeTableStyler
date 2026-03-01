@@ -588,6 +588,11 @@ if ($MyInvocation.InvocationName -ne '.') {
         $r1 = $area1
     }
 
+    if (($areas.Count -eq 1) -and ($area1.Rows.Count -eq 1) -and ($area1.Columns.Count -eq 1)) {
+        Write-Host "The selected area is only one cell. Please select a range and re-run the script."
+        exit 1
+    }
+
     # Declare a 2D array to hold the boolean values of the cells in the range $r1.
     $table = New-Object 'bool[,]' $r1.Rows.Count, $r1.Columns.Count
 
