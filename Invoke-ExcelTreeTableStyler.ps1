@@ -419,7 +419,6 @@ class FillSectionAndDrawBordersStrategy : StylerStrategy {
             $hasBodyArea = $cellBodyLeft -le $cellRight
             if ($hasBodyArea) {
                 $range2 = $this.CreateRange($cellTop, $cellBodyLeft, $cellBottom, $cellRight)
-                $range2.Select()
 
                 # Draw the border of the body area.
                 $this.DrawRectangleGrid($range2)
