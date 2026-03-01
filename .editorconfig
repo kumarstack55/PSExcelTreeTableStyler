@@ -5,3 +5,11 @@ indent_size = 4
 indent_style = space
 insert_final_newline = true
 trim_trailing_whitespace = true
+
+[*.md]
+indent_size = 2
+indent_style = space
+insert_final_newline = true
+
+# https://spec.commonmark.org/0.31.2/#hard-line-breaks
+trim_trailing_whitespace = false
