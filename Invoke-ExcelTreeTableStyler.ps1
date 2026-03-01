@@ -415,17 +415,20 @@ class FillSectionAndDrawBordersStrategy : StylerStrategy {
             $this.DrawRectangleBorder($range1)
 
             # Draw grid in the table body area.
-            $cellBodyTop = $cellTop
             $cellBodyLeft = $cellLeft + $headerColumunsWidthInRectanble
-            $cellBodyBottom = $cellBottom
-            $cellBodyRight = $cellRight
-            $cellBodyTopLeft = $this.Worksheet.Cells($cellBodyTop, $cellBodyLeft)
-            $cellBodyBottomRight = $this.Worksheet.Cells($cellBodyBottom, $cellBodyRight)
-            $range2 = $this.Worksheet.Range($cellBodyTopLeft, $cellBodyBottomRight)
-            $this.DrawRectangleGrid($range2)
+            $hasBodyArea = $cellBodyLeft -le $cellRight
+            if ($hasBodyArea) {
 
-            # Clear the fill of the table body area.
-            $this.ClearFillRectangle($range2)
+                $range2 = $this.CreateRange($cellTop, $cellBodyLeft, $cellBottom, $cellRight)
+                $range2.Select()
+
+                # Draw the border of the body area.
+                $this.DrawRectangleGrid($range2)
+
+                # Clear the fill of the table body area.
+                # This is necessary because the body area may be filled with the header color, and we want to keep it white.
+                $this.ClearFillRectangle($range2)
+            }
         }
     }
 }
